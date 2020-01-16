@@ -824,6 +824,35 @@ impl DynamicImage {
         }
     }
 
+    /// Scale this image down to a specific size.
+    /// Returns a new image. The image's aspect ratio is preserved.
+    /// The image is scaled to the maximum possible size that fits
+    /// within the larger (relative to aspect ratio) of the bounds
+    /// specified by ```nwidth``` and ```nheight```, then cropped to
+    /// fit within the other bound.
+    /// This method uses a fast integer algorithm where each source
+    /// pixel contributes to exactly one target pixel.
+    /// May give aliasing artifacts if new size is close to old size.
+    pub fn thumbnail_to_fill(
+        &self,
+        nwidth: u32,
+        nheight: u32,
+    ) -> DynamicImage {
+        let (width2, height2) =
+            resize_dimensions(self.width(), self.height(), nwidth, nheight, true);
+
+        let mut intermediate = self.thumbnail_exact(width2, height2);
+        let (iwidth, iheight) = intermediate.dimensions();
+        let ratio = u64::from(iwidth) * u64::from(nheight);
+        let nratio = u64::from(nwidth) * u64::from(iheight);
+
+        if nratio > ratio {
+            intermediate.crop(0, (iheight - nheight) / 2, nwidth, nheight)
+        } else {
+            intermediate.crop((iwidth - nwidth) / 2, 0, nwidth, nheight)
+        }
+    }
+
     /// Performs a Gaussian blur on this image.
     /// ```sigma``` is a measure of how much to blur by.
     pub fn blur(&self, sigma: f32) -> DynamicImage {
